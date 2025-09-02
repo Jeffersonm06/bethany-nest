@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Teste Chat Bethany</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    input, textarea { width: 100%; margin: 0.5rem 0; padding: 0.5rem; }
+    button { padding: 0.5rem 1rem; }
+    #response { margin-top: 1rem; padding: 1rem; border: 1px solid #ccc; background: #f9f9f9; }
+  </style>
+</head>
+<body>
+  <h2>Teste Chat Bethany</h2>
+
+  <label for="token">Token JWT:</label>
+  <input type="text" id="token" placeholder="Cole o token aqui" />
+
+  <label for="message">Mensagem:</label>
+  <textarea id="message" placeholder="Digite sua mensagem..."></textarea>
+
+  <button id="sendBtn">Enviar</button>
+
+  <div id="response"></div>
+
+  <script>
+    const sendBtn = document.getElementById('sendBtn');
+    const responseDiv = document.getElementById('response');
+
+    sendBtn.addEventListener('click', async () => {
+      const token = document.getElementById('token').value.trim();
+      const message = document.getElementById('message').value.trim();
+
+      if (!token || !message) {
+        alert('Preencha o token e a mensagem!');
+        return;
+      }
+
+      try {
+        const res = await fetch('http://localhost:3000/bethany/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+          },
+          body: JSON.stringify({ message })
+        });
+
+        const data = await res.json();
+        responseDiv.innerHTML = `<strong>Resposta da Bethany:</strong> ${data.message}`;
+      } catch (err) {
+        responseDiv.innerHTML = `<strong>Erro:</strong> ${err.message}`;
+      }
+    });
+  </script>
+</body>
+</html>
