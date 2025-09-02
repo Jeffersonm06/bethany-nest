@@ -1,5 +1,4 @@
-// bethany.controller.ts
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, NotFoundException, Get } from '@nestjs/common';
 import { Bethany } from './bethany.service';
 import { UserId } from 'src/decorator /user-id.decorator';
 
@@ -19,8 +18,17 @@ export class BethanyController {
       return { error: 'Mensagem vazia' };
     }
 
-    const responseText = await this.bethanyService.sendMessage(message, userId);
-    return { message: responseText };
+    const response = await this.bethanyService.sendMessage(message, userId);
+    return { message: response };
+  }
+
+  @Get('history')
+  async getHistory(@UserId() userId: string, limit: number = 20) {
+    if (!userId) {
+      throw new NotFoundException('O usuário deve estar logado!')
+    }
+
+    return this.bethanyService.getUserMessages(userId, limit)
   }
 
 }

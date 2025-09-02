@@ -1,12 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { GoogleGenAI, Modality } from '@google/genai';
+import { GoogleGenAI, Part } from '@google/genai';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { UserService } from 'src/user/user.service';
 
 export interface Message {
     sender: string;
     userId: string;
-    message: string;
+    content: string;
     image?: string;
     timestamp: number;
 }
@@ -42,57 +42,50 @@ export class Bethany {
         private readonly us: UserService,
     ) { }
 
-    async sendMessage(text: string, userId: string): Promise<string> {
+    async sendMessage(text: string, userId: string): Promise<Message> {
         const user = await this.us.findOne(userId);
-        if (!user) {
-            throw new NotFoundException(
-                'O usuário deve estar logado para acessar o chat',
-            );
-        }
+        if (!user) throw new NotFoundException('O usuário deve estar logado para acessar o chat');
 
         const history = await this.getUserMessages(userId, 15);
 
-        const contents = history.map((msg) => ({
-            role: msg.sender === 'user' ? 'user' : 'model',
-            parts: [{ text: msg.message }],
-        }));
+        // Monta o histórico em formato legível
+        const formattedHistory = history
+            .map(m => `${m.sender === 'user' ? 'Usuário' : 'Bethany'}: ${m.content}`)
+            .join('\n');
 
-        contents.push({
-            role: 'user',
-            parts: [{ text }],
-        });
+        // Cria a mensagem final a enviar
+        const messageToSend = `
+Contexto da conversa:
+        ${formattedHistory}
+
+Mensagem atual do usuário (${user.username}):${text}
+        `;
+
+        console.log(messageToSend);
 
         const response = await this.ai.models.generateContent({
             model: this.model,
-            contents,
+            contents: [{ text: messageToSend }], // string única dentro do array
             config: {
-                thinkingConfig: {
-                    thinkingBudget: 1,
-                },
+                thinkingConfig: { thinkingBudget: 1 },
                 systemInstruction: this.instructions
             }
-        })
-
-        const reply = response.text || '...';
-
-        await this.saveMessage({
-            sender: 'user',
-            userId,
-            message: text,
-            timestamp: Date.now(),
         });
 
-        await this.saveMessage({
-            sender: 'bethany',
-            userId,
-            message: reply,
-            timestamp: Date.now(),
-        });
+        const timestamp = Date.now();
 
-        return reply;
+        // Mensagem do usuário
+        const userMessage: Message = { sender: 'user', userId, content: text, timestamp };
+        await this.saveMessage(userMessage);
+
+        // Mensagem da Bethany
+        const bethanyMessage: Message = { sender: 'bethany', userId, content: response.text || '...', timestamp: Date.now() };
+        await this.saveMessage(bethanyMessage);
+
+        return bethanyMessage;
     }
 
-    private async getUserMessages(
+    async getUserMessages(
         userId: string,
         limit: number,
     ): Promise<Message[]> {
