@@ -23,4 +23,9 @@ export class AuthController {
         }
         return { valid: false }
     }
+
+    @Get('check-access')
+    checkAccess(@UserId() userId: string) {
+        return this.authService.verifyUser(userId);
+    }
 }

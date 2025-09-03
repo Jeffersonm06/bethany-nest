@@ -48,12 +48,10 @@ export class Bethany {
 
         const history = await this.getUserMessages(userId, 15);
 
-        // Monta o histórico em formato legível
         const formattedHistory = history
             .map(m => `${m.sender === 'user' ? 'Usuário' : 'Bethany'}: ${m.content}`)
             .join('\n');
 
-        // Cria a mensagem final a enviar
         const messageToSend = `
 Contexto da conversa:
         ${formattedHistory}
@@ -79,7 +77,8 @@ Mensagem atual do usuário (${user.username}):${text}
         await this.saveMessage(userMessage);
 
         // Mensagem da Bethany
-        const bethanyMessage: Message = { sender: 'bethany', userId, content: response.text || '...', timestamp: Date.now() };
+        let formatedResponse = this.formatarParaHtml(response.text || "...")
+        const bethanyMessage: Message = { sender: 'bethany', userId, content: formatedResponse, timestamp: Date.now() };
         await this.saveMessage(bethanyMessage);
 
         return bethanyMessage;
@@ -108,4 +107,58 @@ Mensagem atual do usuário (${user.username}):${text}
             message,
         );
     }
+
+    formatarParaHtml(texto: string): string {
+        texto = texto.trim();
+
+        // Converte negrito **texto** para <strong>texto</strong>
+        texto = texto.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+
+        // Quebra as ideias numeradas em blocos separados
+        texto = texto.replace(/(\d+\.)/g, "\n$1");
+
+        // Quebra o texto em linhas
+        const linhas = texto
+            .split("\n")
+            .map(linha => linha.trim())
+            .filter(linha => linha.length > 0);
+
+        const html: string[] = [];
+        let listaAberta = false;
+
+        for (const linha of linhas) {
+            if (linha.startsWith("- ") || linha.startsWith("* ")) {
+                // Se encontrar marcador, abre <ul> se ainda não abriu
+                if (!listaAberta) {
+                    html.push("<ul>");
+                    listaAberta = true;
+                }
+                const item = linha.slice(2).trim();
+                html.push(`<li>${item}</li>`);
+            } else if (/^\d+\./.test(linha)) {
+                // Se for item numerado, fecha lista anterior se aberta
+                if (listaAberta) {
+                    html.push("</ul>");
+                    listaAberta = false;
+                }
+                const [numero, ...resto] = linha.split(".");
+                html.push(`<h3>${numero}. ${resto.join(".").trim()}</h3>`);
+            } else {
+                // Texto normal, fecha lista se aberta e adiciona parágrafo
+                if (listaAberta) {
+                    html.push("</ul>");
+                    listaAberta = false;
+                }
+                html.push(`<p>${linha}</p>`);
+            }
+        }
+
+        // Fecha lista se tiver aberto no final
+        if (listaAberta) {
+            html.push("</ul>");
+        }
+
+        return html.join("\n");
+    }
+
 }

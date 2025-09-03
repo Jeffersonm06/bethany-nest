@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { LoginDto } from './dtos/login.dto';
 import { User } from 'src/user/entities/user.entity';
 import { UserService } from 'src/user/user.service';
@@ -7,6 +7,12 @@ import { ReturnLoginDto } from './dtos/returnLogin.dto';
 import { JwtService } from '@nestjs/jwt';
 import { ReturnUserDto } from 'src/user/dto/return-user.dto';
 import { LoginPayload } from './dtos/loginPayload';
+import { UserType } from 'src/user/enum/user-type.enum';
+
+export interface Access {
+  accessType: UserType;
+  checked: boolean;
+}
 
 @Injectable()
 export class AuthService {
@@ -31,21 +37,24 @@ export class AuthService {
     };
   }
 
-  async verifyUser(token: string): Promise<User> {
-    let payload: any;
+  async verifyUser(userId: string): Promise<Access> {
 
     try {
-      payload = this.jwtService.verify(token);
+      const user = await this.userService.findOne(userId);
+
+      if (!user) {
+        throw new NotFoundException('Usuário não encontrado');
+      }
+
+      if (user.accessType === 3) {
+        return { accessType: 3, checked: true }
+      }
+
+      throw new BadRequestException('Usuário não autorizado');
     } catch (err) {
       throw new UnauthorizedException('Token inválido');
     }
 
-    const user = await this.userService.findOne(payload.id);
-    if (!user) {
-      throw new NotFoundException('Usuário não encontrado');
-    }
-
-    return user;
   }
 
   verifyToken(token: string): string {
