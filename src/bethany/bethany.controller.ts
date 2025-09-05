@@ -1,6 +1,8 @@
-import { Controller, Post, Body, NotFoundException, Get } from '@nestjs/common';
-import { Bethany } from './bethany.service';
+import { Controller, Post, Body, NotFoundException, Get, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Bethany, Message } from './bethany.service';
 import { UserId } from 'src/decorator /user-id.decorator';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 
 export class ChatDto {
   message: string;
@@ -11,14 +13,16 @@ export class BethanyController {
   constructor(private readonly bethanyService: Bethany) { }
 
   @Post('chat')
-  async sendMessage(@Body('message') message: string, @UserId() userId: string) {
-    console.log('Mensagem recebida do front:', message);
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  async sendMessage(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('message') message: string,
+    @Body('type') typeMsg: Message['type'],
+    @UserId() userId: string
+  ) {
+    console.log(message, userId, file, typeMsg)
+    const response = await this.bethanyService.sendMessage(message, userId, file, typeMsg);
 
-    if (!message || !message.trim()) {
-      return { error: 'Mensagem vazia' };
-    }
-
-    const response = await this.bethanyService.sendMessage(message, userId);
     return { message: response };
   }
 

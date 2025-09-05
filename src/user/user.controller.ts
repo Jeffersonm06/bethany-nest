@@ -1,6 +1,8 @@
-import { Controller, Post, Get, Patch, Delete, Param, Body } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Delete, Param, Body, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { UserId } from 'src/decorator /user-id.decorator';
 
 @Controller('users')
 export class UserController {
@@ -29,5 +31,17 @@ export class UserController {
   @Delete(':id')
   async delete(@Param('id') id: string) {
     return this.userService.delete(id);
+  }
+
+  @Post('u/profile-pic')
+  @UseInterceptors(FileInterceptor('image'))
+  async updateProfilePic(
+    @UserId() userId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Nenhuma imagem enviada');
+    }
+    return this.userService.updateProfilePic(userId, file);
   }
 }
