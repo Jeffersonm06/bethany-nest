@@ -25,7 +25,6 @@ export class AuthService {
     const user = await this.userService.findUserByEmail(loginDto.email);
 
     if (!user) throw new NotFoundException("Email or password not exist");
-    console.log(user)
     const isMatch = await compare(loginDto.password, user.password);
     if (!isMatch) throw new NotFoundException("Email or password not exist");
 
@@ -39,8 +38,8 @@ export class AuthService {
 
   verifyToken(token: string): string {
   try {
-    const payload = this.jwtService.verify(token, { secret: process.env.JWT_SECRET }) as { userId: string };
-    return payload.userId;
+    const payload = this.jwtService.verify(token, { secret: process.env.JWT_SECRET }) as { id: string };
+    return payload.id;
   } catch (err) {
     throw new UnauthorizedException('Token inválido');
   }
