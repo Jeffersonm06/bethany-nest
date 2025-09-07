@@ -37,32 +37,19 @@ export class AuthService {
     };
   }
 
-  async verifyUser(userId: string): Promise<Access> {
-
-    try {
-      const user = await this.userService.findOne(userId);
-
-      if (!user) {
-        throw new NotFoundException('Usuário não encontrado');
-      }
-
-      if (user.accessType === 3) {
-        return { accessType: 3, checked: true }
-      }
-
-      throw new BadRequestException('Usuário não autorizado');
-    } catch (err) {
-      throw new UnauthorizedException('Token inválido');
-    }
-
-  }
-
   verifyToken(token: string): string {
-    try {
-      const decoded = this.jwtService.verify(token);
-      return decoded.id;
-    } catch (error) {
-      throw new UnauthorizedException('Invalid token');
-    }
+  try {
+    const payload = this.jwtService.verify(token, { secret: process.env.JWT_SECRET }) as { userId: string };
+    return payload.userId;
+  } catch (err) {
+    throw new UnauthorizedException('Token inválido');
+  }
+}
+
+  async verifyUser(userId: string) {
+    const user = await this.userService.findOne(userId);
+    if (!user) throw new UnauthorizedException('Usuário não encontrado');
+    if (user.accessType === 3) return { accessType: 3, checked: true };
+    throw new UnauthorizedException('Usuário não autorizado');
   }
 }

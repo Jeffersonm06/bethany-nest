@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Post, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Post, UnauthorizedException, UsePipes, ValidationPipe } from '@nestjs/common';
 import { LoginDto } from './dtos/login.dto';
 import { AuthService } from './auth.service';
 import { ReturnLoginDto } from './dtos/returnLogin.dto';
@@ -16,16 +16,21 @@ export class AuthController {
 
     @Get('check-token')
     checkToken(@Headers('Authorization') authHeader: string) {
-        const token = authHeader.replace('Bearer ', '');
-        const userId = this.authService.verifyToken(token);
-        if (userId) {
-            return { valid: true };
+        if (!authHeader) return { valid: false };
+        try {
+            const token = authHeader.replace('Bearer ', '');
+            const userId = this.authService.verifyToken(token);
+            return { valid: !!userId, userId };
+        } catch {
+            return { valid: false };
         }
-        return { valid: false }
     }
 
     @Get('check-access')
-    checkAccess(@UserId() userId: string) {
+    async checkAccess(@Headers('Authorization') authHeader: string) {
+        if (!authHeader) throw new UnauthorizedException();
+        const token = authHeader.replace('Bearer ', '');
+        const userId = this.authService.verifyToken(token);
         return this.authService.verifyUser(userId);
     }
 }
